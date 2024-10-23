@@ -3,10 +3,15 @@ This is for the milestones. In the first step please install milestone.01.tar fr
 
 <p>To use our depedencies please install peotry</p>
 
-```curl -sSL https://install.python-poetry.org | python3 -```
+```
+bash 
+curl -sSL https://install.python-poetry.org | python3 -```
 
 <p>Then go to the project folder and write</p>
 
-``poetry install```
+``` 
+bash 
+poetry install
+```
 
 
