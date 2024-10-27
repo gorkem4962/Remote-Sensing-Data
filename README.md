@@ -13,6 +13,7 @@ This is for the milestones. In the first step please install milestone.01.tar fr
 
 ```pip wheel --no-cache-dir --use-pep517 "pyarrow (==17.0.0)"```
 
+If you get an error with geospandas please install proj. 
 
 
 

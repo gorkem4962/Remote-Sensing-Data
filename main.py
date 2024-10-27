@@ -20,6 +20,20 @@ def get_season_from_patch_id(patch_id):
     return None
 
 
+# calculating the maximum number of labels of one patch 
+# and average number of labels for one patch 
+
+def calculate_labels(labels):
+    max_labels = max(len(patch) for patch in labels)
+
+    total_labels = sum(len(patch) for patch in labels)
+    average_labels = total_labels / len(labels)
+    
+    return max_labels, round(average_labels,2)
+
+
+
+
 
 
 df = pd.read_parquet("untracked-files/milestone01/metadata.parquet")
@@ -35,3 +49,7 @@ print(f"spring: {season_counts.get('spring', 0)} samples")
 print(f"summer: {season_counts.get('summer', 0)} samples")
 print(f"fall: {season_counts.get('fall', 0)} samples")
 print(f"winter: {season_counts.get('winter', 0)} samples")
+
+max_labels, average_labels = calculate_labels(df['labels'].tolist())
+
+print("average-num-labels: AVG rounded to two decimals (%.2f)" % average_labels)
