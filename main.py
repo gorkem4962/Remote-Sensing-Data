@@ -1,6 +1,11 @@
 import pandas as pd
 import re
 from datetime import datetime
+import dask.bag as db
+from pathlib import Path
+import rasterio
+import matplotlib.pyplot as plt
+
 
 def get_season_from_patch_id(patch_id):
     # regular expression to search a 8 digit value
@@ -31,14 +36,15 @@ def calculate_labels(labels):
     
     return max_labels, round(average_labels,2)
 
+def checking_correctness():
+
+    return 0
 
 
 
 
 
 df = pd.read_parquet("untracked-files/milestone01/metadata.parquet")
-# pd.set_option('display.max_colwidth', None)
-# print(df.head())
 df['season'] = df['patch_id'].apply(get_season_from_patch_id)
 
 # Count the number of image patches per season
@@ -50,6 +56,28 @@ print(f"summer: {season_counts.get('summer', 0)} samples")
 print(f"fall: {season_counts.get('fall', 0)} samples")
 print(f"winter: {season_counts.get('winter', 0)} samples")
 
+# Calculate label statistics
 max_labels, average_labels = calculate_labels(df['labels'].tolist())
+print("average-num-labels: %.2f" % average_labels)
 
-print("average-num-labels: AVG rounded to two decimals (%.2f)" % average_labels)
+# Set up base path and list directory contents with Dask
+
+file_path = Path('untracked-files/milestone01/BigEarthNet-v2.0-S2-with-errors/S2A_MSIL2A_20170720T100031_N9999_R122_T34UDG/S2A_MSIL2A_20170720T100031_N9999_R122_T34UDG_61_54/S2A_MSIL2A_20170720T100031_N9999_R122_T34UDG_61_54_B01.tif')
+
+# Open the TIFF file
+with rasterio.open(file_path) as src:
+    # Read the data for Band 8A
+    band_data = src.read(1)  # The `1` indicates the first (and possibly only) band
+    
+    # Print metadata for insights into the data structure
+    print("Metadata:", src.meta)
+    
+    # Display the data array shape
+    print("Data shape:", band_data.shape)
+    
+    # Visualize the band data with matplotlib
+    plt.figure(figsize=(10, 10))
+    plt.imshow(band_data, cmap='gray')
+    plt.colorbar()
+    plt.title("Band 8A - S2A_MSIL2A")
+    plt.show() 
