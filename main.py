@@ -36,19 +36,82 @@ def calculate_labels(labels):
     
     return max_labels, round(average_labels,2)
 
-def checking_correctness():
+def count_children(parent_directory):
+    parent = Path(parent_directory)
+    # Use list comprehension to get only directories
+    child_directories = [p for p in parent.iterdir() if p.is_dir()]
+    return len(child_directories)
 
-    return 0
+def calculate_num_of_errors(path):
+  num_wrongsize = 0
+  num_nodata = 0
+  num_npdataset = 0
+  
+  band_resolution = {
+    "B02": "10m/px",
+    "B03": "10m/px",
+    "B04": "10m/px",
+    "B08": "10m/px",
+    "B05": "20m/px",
+    "B06": "20m/px",
+    "B07": "20m/px",
+    "B8A": "20m/px",
+    "B11": "20m/px",
+    "B12": "20m/px",
+    "B01": "60m/px",
+    "B09": "60m/px"
+ }
+
+  
+  pattern = r"B(?:\d{2}|8A)"
+  for sub_path in path.iterdir():
+    for sub_path_order in sub_path.iterdir():
+        for sub_sub_path in sub_path_order.iterdir():
+    
+           match = re.findall(pattern, str(sub_sub_path))
+           if match:
+             right_value = band_resolution.get(match[0])
+
+             with rasterio.open(str(sub_sub_path)) as dataset:
+            # Access the affine transformation
+              transform = dataset.transform
+              meters_per_pixel_x = round(transform.a)
+
+          #  Format as string "meters_per_pixel_x/px"
+              meters_per_pixel_x_str = f"{meters_per_pixel_x}m/px"
+              
+              if meters_per_pixel_x_str != right_value:
+               num_wrongsize += 1
+           else:
+               print("No matches found.")
+
+           break
+           
 
 
 
 
 
+  return num_wrongsize,num_nodata,num_npdataset
+
+
+
+ 
+ 
+
+
+
+
+path = Path("untracked-files/milestone01/BigEarthNet-v2.0-S2-with-errors")
 df = pd.read_parquet("untracked-files/milestone01/metadata.parquet")
 df['season'] = df['patch_id'].apply(get_season_from_patch_id)
 
 # Count the number of image patches per season
 season_counts = df['season'].value_counts()
+# Calculate label statistics
+max_labels, average_labels = calculate_labels(df['labels'].tolist())
+
+
 
 # Print the results in the required format
 print(f"spring: {season_counts.get('spring', 0)} samples")
@@ -56,28 +119,12 @@ print(f"summer: {season_counts.get('summer', 0)} samples")
 print(f"fall: {season_counts.get('fall', 0)} samples")
 print(f"winter: {season_counts.get('winter', 0)} samples")
 
-# Calculate label statistics
-max_labels, average_labels = calculate_labels(df['labels'].tolist())
+
 print("average-num-labels: %.2f" % average_labels)
+
+num_wrong_size,a,b = calculate_num_of_errors(path)
+print("Number of wrong size is: " + str(num_wrong_size))
+
 
 # Set up base path and list directory contents with Dask
 
-file_path = Path('untracked-files/milestone01/BigEarthNet-v2.0-S2-with-errors/S2A_MSIL2A_20170720T100031_N9999_R122_T34UDG/S2A_MSIL2A_20170720T100031_N9999_R122_T34UDG_61_54/S2A_MSIL2A_20170720T100031_N9999_R122_T34UDG_61_54_B01.tif')
-
-# Open the TIFF file
-with rasterio.open(file_path) as src:
-    # Read the data for Band 8A
-    band_data = src.read(1)  # The `1` indicates the first (and possibly only) band
-    
-    # Print metadata for insights into the data structure
-    print("Metadata:", src.meta)
-    
-    # Display the data array shape
-    print("Data shape:", band_data.shape)
-    
-    # Visualize the band data with matplotlib
-    plt.figure(figsize=(10, 10))
-    plt.imshow(band_data, cmap='gray')
-    plt.colorbar()
-    plt.title("Band 8A - S2A_MSIL2A")
-    plt.show() 
