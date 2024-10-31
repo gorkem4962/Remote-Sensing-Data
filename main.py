@@ -42,57 +42,63 @@ def count_children(parent_directory):
     child_directories = [p for p in parent.iterdir() if p.is_dir()]
     return len(child_directories)
 
-def calculate_num_of_errors(path):
-  num_wrongsize = 0
-  num_nodata = 0
-  num_npdataset = 0
-  
-  band_resolution = {
-    "B02": "10m/px",
-    "B03": "10m/px",
-    "B04": "10m/px",
-    "B08": "10m/px",
-    "B05": "20m/px",
-    "B06": "20m/px",
-    "B07": "20m/px",
-    "B8A": "20m/px",
-    "B11": "20m/px",
-    "B12": "20m/px",
-    "B01": "60m/px",
-    "B09": "60m/px"
- }
+def checkup_metadata(path_patch_id, meta_data, counter):
+    path_patch_id = path_patch_id.split('/')[-1]
+    for patch_id_parquet in meta_data['patch_id']:
+        
+        if patch_id_parquet == path_patch_id:
+            return counter  # Return if a match is found
+        
+   
+    return counter +1 # Ensure counter is returned even if no match is found
 
-  
-  pattern = r"B(?:\d{2}|8A)"
-  for sub_path in path.iterdir():
-    for sub_path_order in sub_path.iterdir():
-        for sub_sub_path in sub_path_order.iterdir():
+
+
+def calculate_num_of_errors(path,meta_parquet):
+    num_wrongsize = 0
+    num_nodata = 0
+    num_npdataset = 0
     
-           match = re.findall(pattern, str(sub_sub_path))
-           if match:
-             right_value = band_resolution.get(match[0])
+    band_resolution = {
+        "B02": "10m/px", "B03": "10m/px", "B04": "10m/px", "B08": "10m/px",
+        "B05": "20m/px", "B06": "20m/px", "B07": "20m/px", "B8A": "20m/px",
+        "B11": "20m/px", "B12": "20m/px", "B01": "60m/px", "B09": "60m/px"
+    }
+    
+    pattern = r"B(?:\d{2}|8A)"
+    
+    for sub_path in path.iterdir():
+        if not sub_path.is_dir():
+            continue
+        for sub_path_order in sub_path.iterdir():
+            num_npdataset = checkup_metadata(str(sub_path_order),meta_parquet,num_npdataset)
 
-             with rasterio.open(str(sub_sub_path)) as dataset:
-            # Access the affine transformation
-              transform = dataset.transform
-              meters_per_pixel_x = round(transform.a)
+            if not sub_path_order.is_dir():
+                continue
+            for sub_sub_path in sub_path_order.iterdir():
+                match = re.findall(pattern, str(sub_sub_path))
+                if match:
+                    right_value = band_resolution.get(match[0])
+                    with rasterio.open(str(sub_sub_path)) as dataset:
+                        transform = dataset.transform
+                        meters_per_pixel_x = round(transform.a)
+                        meters_per_pixel_x_str = f"{meters_per_pixel_x}m/px"
+                        
+                        if meters_per_pixel_x_str != right_value:
+                            num_wrongsize += 1
 
-          #  Format as string "meters_per_pixel_x/px"
-              meters_per_pixel_x_str = f"{meters_per_pixel_x}m/px"
-              
-              if meters_per_pixel_x_str != right_value:
-               num_wrongsize += 1
-           else:
-               print("No matches found.")
+                        nodata_value = dataset.nodata
+                        if nodata_value is not None:
+                            nodata_mask = dataset.read_masks(1) == 0
+                            if nodata_mask.any():
+                                num_nodata += 1 
+                else:
+                    print("No matches found.")
+                
+                
 
-           break
-           
+    return num_wrongsize, num_nodata, num_npdataset
 
-
-
-
-
-  return num_wrongsize,num_nodata,num_npdataset
 
 
 
@@ -104,6 +110,7 @@ def calculate_num_of_errors(path):
 
 path = Path("untracked-files/milestone01/BigEarthNet-v2.0-S2-with-errors")
 df = pd.read_parquet("untracked-files/milestone01/metadata.parquet")
+
 df['season'] = df['patch_id'].apply(get_season_from_patch_id)
 
 # Count the number of image patches per season
@@ -122,9 +129,11 @@ print(f"winter: {season_counts.get('winter', 0)} samples")
 
 print("average-num-labels: %.2f" % average_labels)
 
-num_wrong_size,a,b = calculate_num_of_errors(path)
-print("Number of wrong size is: " + str(num_wrong_size))
+num_wrong_size,num_no_data,num_np_dataset = calculate_num_of_errors(path,df)
+print("wrong-size: " + str(num_wrong_size))
+
+print("with-no-data: " + str(num_no_data)) 
+print("not-part-of-dataset: " + str(num_np_dataset))
 
 
-# Set up base path and list directory contents with Dask
 
